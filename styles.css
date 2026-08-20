@@ -1,0 +1,51 @@
+#game-state-container{
+    display: flex;
+    justify-content: center;
+}
+
+h1 {
+ text-align: center;
+}
+
+.game-grid-row{
+    display: flex;
+}
+
+.game-grid-tile {
+    height: 40px;
+    width: 40px;
+}
+
+.player {
+    outline-width: 10px;
+    outline-style: solid;
+    margin: 35px;
+    padding: 10px;
+    width: 125px;
+}
+
+.current-player {
+    outline-width: 20px;
+}
+
+#color-container {
+    display: flex;
+    justify-content: center;
+}
+
+.color-button {
+    height: 50px;
+    width: 50px;
+    margin: 10px;
+}
+
+.occupied {
+    outline-style: solid;
+    outline-width: 10px;
+    outline-color: white;
+    outline-offset: -8px;
+}
+
+#game-over{
+    text-align: center;
+}
