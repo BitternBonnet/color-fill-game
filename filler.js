@@ -3,13 +3,11 @@
 //                  Configuration
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-var gridWidth = 5
-var gridHeight = 5
-var colorSet = 5
+var gridWidth = 10
+var gridHeight = 7
+var colorSet = 10
 
-var colorGrid = []
-var ownershipGrid = []
-var turn = 0;
+var gameStates = [];
 
 var computerImaginationDepth = 2;
 
@@ -30,16 +28,12 @@ var colorBank = [
 
 var player1 = {
     name: "Vivi",
-    isHuman: true,
-    claimedTiles: 1,
-    currentColor: 0
+    isHuman: true
 }
 
 var player2 = {
     name: "George",
-    isHuman: false,
-    claimedTiles: 1,
-    currentColor: 1
+    isHuman: false
 }
 
 onload = function(){
@@ -57,6 +51,8 @@ function startGame(){
 }
 
 function populateStartingColors() {
+    var colorGrid = [];
+    var ownershipGrid = [];
     for(var y = 0; y < gridHeight; y++){
         var newColorRow = [];
         var newOwnershipRow = [];
@@ -85,38 +81,38 @@ function populateStartingColors() {
     ownershipGrid[gridHeight - 1][0] = 1;
     ownershipGrid[0][gridWidth - 1] = 2;
 
-    player1.currentColor = colorGrid[gridHeight - 1][0];
-    player2.currentColor = colorGrid[0][gridWidth - 1];
+    addNewGameState(colorGrid, ownershipGrid, 0, [], "Initialize game")
 }
 
 function createBasicLayout(){
     var basicLayoutHTML = `<div id="game-state-container">
-        <div class="player current-player" id="player-1" style="outline-color: ${colorBank[player1.currentColor]}">
+        <div class="player current-player" id="player-1" style="outline-color: ${colorBank[gameStates[0].player1.currentColor]}">
             <h2>${player1.name}</h2>
-            <p id="player-1-score">${player1.claimedTiles}</p>
+            <p id="player-1-score">${gameStates[0].player1.claimedTiles}</p>
             <p style="font-weight: bold;" id="player-1-turn-indicator">Your turn!</p>
         </div>
         <div id="game-grid"></div>
-        <div class="player" id="player-2" style="outline-color: ${colorBank[player2.currentColor]}"2>
+        <div class="player" id="player-2" style="outline-color: ${colorBank[gameStates[0].player2.currentColor]}"2>
             <h2>${player2.name}</h2>
-            <p id="player-2-score">${player2.claimedTiles}</p>
+            <p id="player-2-score">${gameStates[0].player2.claimedTiles}</p>
             <p style="visibility: hidden; font-weight: bold;" id="player-2-turn-indicator">Your turn!</p>
         </div>
     </div>
     <div id="color-container">`;
     for(var c = 0; c < colorSet; c++){
-        var isOccupied = (c == player1.currentColor || c== player2.currentColor);
+        var isOccupied = (c == gameStates[0].player1.currentColor || c == gameStates[0].player2.currentColor);
         basicLayoutHTML += `<div class="color-button${isOccupied? " occupied": ""}" id="color-button-${c}" style="background-color: ${colorBank[c]}"></div>`;
     }
     basicLayoutHTML += `</div>`
     document.getElementById("main-content").innerHTML = basicLayoutHTML;
 
     for(let c = 0; c < colorSet; c++){
-        document.getElementById(`color-button-${c}`).addEventListener("click", e => switchColor(c));
+        document.getElementById(`color-button-${c}`).addEventListener("click", e => switchColor(0, c));
     }
 }
 
 function drawGrid(){
+    var colorGrid = gameStates[0].colorGrid;
     var gridHtml = `<div id="game-grid">`;
 
     for(var y = 0; y < gridHeight; y++){
@@ -135,81 +131,112 @@ function drawGrid(){
 //                  Gameplay Functionality
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-function switchColor(color){
-    if(color == player1.currentColor || color == player2.currentColor){
-        return;
+function switchColor(gameStateId, color){
+    console.log(`${gameStateId}: switching to ${color}`)
+
+    if(color == gameStates[gameStateId].player1.currentColor || color == gameStates[gameStateId].player2.currentColor){
+        return "bad";
     }
 
-    turn += 1;
+    gameStates[gameStateId].turn += 1;
+
+    var updateUI = (gameStateId == 0);
     
     var prevPlayer;
-    if(turn%2){
-        document.getElementById(`color-button-${player1.currentColor}`).classList.remove("occupied");
-        player1.currentColor = color;
-        document.getElementById(`color-button-${player1.currentColor}`).classList.add("occupied");
+    if(gameStates[gameStateId].turn%2){
+        if(updateUI) document.getElementById(`color-button-${gameStates[gameStateId].player1.currentColor}`).classList.remove("occupied");
         
-        document.getElementById("player-1").style.outlineColor = colorBank[player1.currentColor];
-        document.getElementById("player-1").classList.remove("current-player");
-        document.getElementById("player-1-turn-indicator").style.visibility = "hidden";
-
-        document.getElementById("player-2-turn-indicator").style.visibility = "visible";
-        document.getElementById("player-2").classList.add("current-player");
-
+        gameStates[gameStateId].player1.currentColor = color;
         prevPlayer = 1;
-    } else {
-        document.getElementById(`color-button-${player2.currentColor}`).classList.remove("occupied");
-        player2.currentColor = color;
-        document.getElementById(`color-button-${player2.currentColor}`).classList.add("occupied");
         
-        document.getElementById("player-2").style.outlineColor = colorBank[player2.currentColor];
-        document.getElementById("player-2").classList.remove("current-player");
-        document.getElementById("player-2-turn-indicator").style.visibility = "hidden";
+        if(updateUI){
+            document.getElementById(`color-button-${gameStates[gameStateId].player1.currentColor}`).classList.add("occupied");
+            
+            document.getElementById("player-1").style.outlineColor = colorBank[gameStates[gameStateId].player1.currentColor];
+            document.getElementById("player-1").classList.remove("current-player");
+            document.getElementById("player-1-turn-indicator").style.visibility = "hidden";
 
-        document.getElementById("player-1-turn-indicator").style.visibility = "visible";
-        document.getElementById("player-1").classList.add("current-player");
+            document.getElementById("player-2-turn-indicator").style.visibility = "visible";
+            document.getElementById("player-2").classList.add("current-player");
+        }
+    } else {
+        if(updateUI) document.getElementById(`color-button-${gameStates[gameStateId].player2.currentColor}`).classList.remove("occupied");
+        
+        gameStates[gameStateId].player2.currentColor = color;
         prevPlayer = 2;
+
+        if(updateUI){
+            document.getElementById(`color-button-${gameStates[gameStateId].player2.currentColor}`).classList.add("occupied");
+            
+            document.getElementById("player-2").style.outlineColor = colorBank[gameStates[gameStateId].player2.currentColor];
+            document.getElementById("player-2").classList.remove("current-player");
+            document.getElementById("player-2-turn-indicator").style.visibility = "hidden";
+
+            document.getElementById("player-1-turn-indicator").style.visibility = "visible";
+            document.getElementById("player-1").classList.add("current-player");
+        }
     }
 
     var captured = 0;
     for(var y = 0; y < gridHeight; y++){
         for(var x = 0; x < gridWidth; x++){
             if(
-                ownershipGrid[y][x] == null && 
-                colorGrid[y][x] == color && (
-                    y > 0 && ownershipGrid[y-1][x] == prevPlayer ||
-                    y < (gridHeight - 1) && ownershipGrid[y+1][x] == prevPlayer ||
-                    x > 0 && ownershipGrid[y][x-1] == prevPlayer ||
-                    x < (gridWidth - 1) && ownershipGrid[y][x+1] == prevPlayer
+                gameStates[gameStateId].ownershipGrid[y][x] == null && 
+                gameStates[gameStateId].colorGrid[y][x] == color && (
+                    y > 0 && gameStates[gameStateId].ownershipGrid[y-1][x] == prevPlayer ||
+                    y < (gridHeight - 1) && gameStates[gameStateId].ownershipGrid[y+1][x] == prevPlayer ||
+                    x > 0 && gameStates[gameStateId].ownershipGrid[y][x-1] == prevPlayer ||
+                    x < (gridWidth - 1) && gameStates[gameStateId].ownershipGrid[y][x+1] == prevPlayer
             )){
-                ownershipGrid[y][x] = prevPlayer;
+                gameStates[gameStateId].ownershipGrid[y][x] = prevPlayer;
                 captured += 1;
             }
 
-            if(ownershipGrid[y][x] == prevPlayer){
-                colorGrid[y][x] = color;
-                document.getElementById(`game-grid-tile-${y}-${x}`).style.backgroundColor = colorBank[color];
+            if(gameStates[gameStateId].ownershipGrid[y][x] == prevPlayer){
+                gameStates[gameStateId].colorGrid[y][x] = color;
+                if(updateUI) document.getElementById(`game-grid-tile-${y}-${x}`).style.backgroundColor = colorBank[color];
             }
         }
     }
     
-    if(turn%2){
-        player1.claimedTiles += captured;
-        document.getElementById("player-1-score").innerHTML = player1.claimedTiles;
+    if(gameStates[gameStateId].turn%2){
+        gameStates[gameStateId].player1.claimedTiles += captured;
+        if(updateUI) document.getElementById("player-1-score").innerHTML = gameStates[gameStateId].player1.claimedTiles;
     } else {
-        player2.claimedTiles += captured;
-        document.getElementById("player-2-score").innerHTML = player2.claimedTiles;
+        gameStates[gameStateId].player2.claimedTiles += captured;
+        if(updateUI) document.getElementById("player-2-score").innerHTML = gameStates[gameStateId].player2.claimedTiles;
     }
 
-    if(player1.claimedTiles + player2.claimedTiles == gridHeight * gridWidth){
-        endGame();
+    gameStates[gameStateId].history.push(`Player${prevPlayer} switched to color ${color}`)
+    console.log(gameStates[gameStateId])
+
+    if(gameStates[gameStateId].player1.claimedTiles + gameStates[gameStateId].player2.claimedTiles == gridHeight * gridWidth){
+         if(gameStates[gameStateId].player1.claimedTiles > gameStates[gameStateId].player2.claimedTiles){
+            gameStates[gameStateId].winner = 1;
+            
+        } else if (gameStates[gameStateId].player1.claimedTiles < gameStates[gameStateId].player2.claimedTiles){
+            gameStates[gameStateId].winner = 2;
+        } else {
+            gameStates[gameStateId].winner = 0;
+        }
+        gameStates[gameStateId].history.push(`Player${gameStates[gameStateId].winner} wins`)
+        
+        if(updateUI) {
+            endGame(gameStates[gameStateId].winner);
+            return "win";
+        }
     }
 
-    if(turn%2 && !player2.isHuman){
+    if(updateUI & gameStates[gameStateId].turn%2 && !player2.isHuman){
         takeComputerTurn();
     }
+
+    return "success";
 }
 
-function endGame(){
+function endGame(winner){
+    var game = gameStates[0];
+
     document.getElementById("color-container").style.visibility = "hidden";
     document.getElementById("player-1-turn-indicator").style.visibility = "hidden";
     document.getElementById("player-2-turn-indicator").style.visibility = "hidden";
@@ -217,10 +244,10 @@ function endGame(){
     document.getElementById("player-2").classList.remove("current-player");
 
     var winnerHtml = `<div id="game-over">`
-    if(player1.claimedTiles > player2.claimedTiles){
-        winnerHtml += `<h2 style="text-shadow: 1px 0px 5px ${colorBank[player1.currentColor]}">${[player1.name]} wins!</h2>`
-    } else if (player1.claimedTiles < player2.claimedTiles){
-        winnerHtml += `<h2 style="text-shadow: 1px 0px 5px ${colorBank[player2.currentColor]}">${[player2.name]} wins!</h2>`
+    if(winner == 1){
+        winnerHtml += `<h2 style="text-shadow: 1px 0px 5px ${colorBank[game.player1.currentColor]}">${[player1.name]} wins!</h2>`
+    } else if (winner == 2){
+        winnerHtml += `<h2 style="text-shadow: 1px 0px 5px ${colorBank[game.player2.currentColor]}">${[player2.name]} wins!</h2>`
     } else {
         winnerHtml += `<h2>It's a draw!</h2>`
     }
@@ -231,177 +258,89 @@ function endGame(){
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                  Game state utilities
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function addNewGameState(colorGrid, ownershipGrid, turn, history, message){
+    var newHistory = [...history, message];
+    
+    var player1Color = colorGrid[gridHeight - 1][0];
+    var player2Color = colorGrid[0][gridWidth - 1];
+    
+    var newGameState = {
+        colorGrid: [],
+        ownershipGrid: [],
+        turn: turn,
+        player1: {
+            currentColor: player1Color,
+            claimedTiles: 1
+        },
+        player2: {
+            currentColor: player2Color,
+            claimedTiles: 1
+        },
+        history: newHistory,
+    };
+
+    for(var y = 0; y < gridHeight; y++){
+        var newColorRow = [];
+        var newOwnershipRow = [];
+        for(var x = 0; x < gridWidth; x++){
+            newColorRow.push(colorGrid[y][x]);
+            newOwnershipRow.push(ownershipGrid[y][x]);
+            if(ownershipGrid[y][x] == 1){
+                player1.claimedTiles++;
+            } else if (ownershipGrid[y][x] == 2){
+                player2.claimedTiles++;
+            }
+        }
+        newGameState.colorGrid.push(newColorRow);
+        newGameState.ownershipGrid.push(newOwnershipRow);
+    }
+
+    gameStates.push(newGameState);
+    return gameStates.length - 1;
+}
+
+function copyGameState(originalId){
+    addNewGameState(
+        gameStates[originalId].colorGrid,
+        gameStates[originalId].ownershipGrid,
+        gameStates[originalId].turn,
+        gameStates[originalId].history,
+        `Game state copied from ${originalId}`
+    );
+
+    return gameStates.length - 1;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                  Computer Turn Logic
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function takeComputerTurn(){
-    var cGrid = [];
-    var oGrid = [];
-    for(var y = 0; y < gridHeight; y++){
-        var cRow = [];
-        var oRow = [];
-        for(var x = 0; x < gridWidth; x++){
-            cRow.push(colorGrid[y][x] + 0);
-            oRow.push(ownershipGrid[y][x] + 0);
-        }
-        cGrid.push(cRow);
-        oGrid.push(oRow);
-    }
-    var turnResults = imagineNextTurn(turn, cGrid, oGrid);
-    console.log(turnResults);
-
-    for(var cid = 1; cid < computerImaginationDepth; cid++){
-        // other player's turn
-        var opponentTurnResults = []
-        for(var i = 0; i < turnResults.length; i++){
-            var cGrid = [];
-            var oGrid = [];
-            for(var y = 0; y < gridHeight; y++){
-                var cRow = [];
-                var oRow = [];
-                for(var x = 0; x < gridWidth; x++){
-                    cRow.push(turnResults[i].colors[y][x] + 0);
-                    oRow.push(turnResults[i].ownership[y][x] + 0);
-                }
-                cGrid.push(cRow);
-                oGrid.push(oRow);
-            }
-
-            var turnResult = imagineNextTurn(turnResults[i].turn, 
-                cGrid, 
-                oGrid,
-                turnResults[i].startingPlay,
-                turnResults[i].p1Score, 
-                turnResults[i].p2Score,
-                turnResults[i].playHistory
-            )
-
-            opponentTurnResults = [...opponentTurnResults, ...turnResult];
-        }
-        var sorted = opponentTurnResults.sort(function(a, b) {return a.p1Score - b.p1Score})
-        opponentTurnResults = sorted.slice(0,10)
-
-        // computer's turn
-        turnResults = []
-        for(var i = 0; i < opponentTurnResults.length; i++){
-            var cGrid = [];
-            var oGrid = [];
-            for(var y = 0; y < gridHeight; y++){
-                var cRow = [];
-                var oRow = [];
-                for(var x = 0; x < gridWidth; x++){
-                    cRow.push(opponentTurnResults[i].colors[y][x] + 0);
-                    oRow.push(opponentTurnResults[i].ownership[y][x] + 0);
-                }
-                cGrid.push(cRow);
-                oGrid.push(oRow);
-            }
-
-            var turnResult = imagineNextTurn(opponentTurnResults[i].turn, 
-                cGrid, 
-                oGrid,
-                opponentTurnResults[i].startingPlay,
-                opponentTurnResults[i].p1Score, 
-                opponentTurnResults[i].p2Score,
-                opponentTurnResults[i].playHistory
-            )
-
-            turnResults = [...turnResults, ...turnResult];
-        }
-        sorted = turnResults.sort(function(a, b) {return a.p2Score - b.p2Score})
-        turnResults = sorted.slice(0,10)
-    }
-    console.log(turnResults)
-    console.log(turnResults[0].startingPlay)
-    switchColor(turnResults[0].startingPlay)
+    var result = oneTurnLookAhead();
+    switchColor(0, result);
 }
 
-function imagineNextTurn(thisTurn, cGridTurn, oGridTurn, startingPlay=null, p1Score=0, p2Score=0, playHistory = []){
-    var turnResults = [];
-    for(var c = 0; c < colorSet; c++){
-        var cGrid = [];
-        var oGrid = [];
-        for(var y = 0; y < gridHeight; y++){
-            var cRow = [];
-            var oRow = [];
-            for(var x = 0; x < gridWidth; x++){
-                cRow.push(cGridTurn[y][x] + 0);
-                oRow.push(oGridTurn[y][x] + 0);
-            }
-            cGrid.push(cRow);
-            oGrid.push(oRow);
-        }
-            
-        var p1Color = cGrid[gridHeight - 1][0];
-        var p2Color = cGrid[0][gridWidth - 1];
-        console.log(`Imaginary turn ${thisTurn}: p1 ${p1Color}, p2 ${p2Color}`);
-
-        if (c != p1Color && c != p2Color){
-            var playResult = imagineNextPlay(thisTurn%2 + 1, c, cGrid, oGrid);
-            playResult.turn = thisTurn + 1;
-            if(startingPlay == null){
-                playResult.startingPlay = c;
-            } else {
-                playResult.startingPlay = startingPlay;
-            }
-
-            var history = JSON.parse(JSON.stringify(playHistory));
-            playResult.playHistory = [...history, c]
-            playResult.p1Score = p1Score;
-            playResult.p2Score = p2Score;
-            if(thisTurn%2 == 0){
-                playResult.p1Score += playResult.captured;
-            } else {
-                playResult.p2Score += playResult.captured;
-            }
-            turnResults.push(playResult);
-        }
-    }
-    return turnResults;
-}
-
-function imagineNextPlay(asPlayer, color, cGridPlay, oGridPlay){
-    var cGrid = [];
-    var oGrid = [];
-    for(var y = 0; y < gridHeight; y++){
-        var cRow = [];
-        var oRow = [];
-        for(var x = 0; x < gridWidth; x++){
-            cRow.push(cGridPlay[y][x] + 0);
-            oRow.push(oGridPlay[y][x] + 0);
-        }
-        cGrid.push(cRow);
-        oGrid.push(oRow);
-    }
-
-    var p1Color = cGrid[gridHeight - 1][0];
-    var p2Color = cGrid[0][gridWidth - 1];
-    console.log(`   Imaginary play ${asPlayer} capturing ${color}: p1 ${p1Color}, p2 ${p2Color}`);
-
-    var captured = 0;
-    for(var y = 0; y < gridHeight; y++){
-        for(var x = 0; x < gridWidth; x++){
-            if(
-                oGrid[y][x] == null && 
-                cGrid[y][x] == color && (
-                    y > 0 && oGrid[y-1][x] == asPlayer ||
-                    y < (gridHeight - 1) && oGrid[y+1][x] == asPlayer ||
-                    x > 0 && oGrid[y][x-1] == asPlayer ||
-                    x < (gridWidth - 1) && oGrid[y][x+1] == asPlayer
-            )){
-                oGrid[y][x] = asPlayer;
-                captured += 1;
-            }
-
-            if(oGrid[y][x] == asPlayer){
-                cGrid[y][x] = color;
-            }
+function oneTurnLookAhead(){
+    var options = []
+    for(var co = 0; co < colorSet; co++){
+        var thisCopy = copyGameState(0);
+        var result = switchColor(thisCopy, co)
+        
+        if(result == "win"){
+            return co;
+        } else if (result == "success"){
+            options.push({
+                color: co,
+                score: gameStates[thisCopy].player2.claimedTiles
+            });
         }
     }
 
-    return {
-        "ownership": JSON.parse(JSON.stringify(oGrid)), 
-        "colors": JSON.parse(JSON.stringify(cGrid)), 
-        "captured": captured
-    }
+    options.sort((a, b) => b.score - a.score);
+    console.log(options);
+    return options[0].color;
 }
