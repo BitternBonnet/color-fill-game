@@ -112,14 +112,12 @@ h1 {
 }
 
 .configuration-input .string-selector {
-    width: min-content;
     text-align: center;
     border: 5px solid black;
     display: flex;
 }
 
 .configuration-input .string-selector .string-selector-option {
-    width: min-content;
     padding-left: 5px;
     padding-right: 5px;
     height: 20px;

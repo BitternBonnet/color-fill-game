@@ -9,6 +9,9 @@ var colorSet = 6;
 
 var gameStates = [];
 
+var captureAllTiles = true;
+var autoCapture = false;
+
 var colorBank = [
     "#ff389f",
     "#6b36ff",
@@ -56,6 +59,20 @@ function displayConfigurationScreen(){
         <div class="configuration-input" id="color-count">
             <div class="label">Color Options</div>
             <div class="number-selector" id="color-count-selector"></div>
+        </div>
+        <div class="configuration-input">
+            <div class="label">End Condition</div>
+            <div class="string-selector" id="end-condition-selector">
+                <div class="string-selector-option" id="end-condition-selector-100">All tiles claimed</div>
+                <div class="string-selector-option" id="end-condition-selector-50">First-past-the-post</div>
+            </div>
+        </div>
+        <div class="configuration-input">
+            <div class="label">Auto-capture "landlocked" tiles</div>
+            <div class="string-selector" id="auto-capture-selector">
+                <div class="string-selector-option" id="auto-capture-selector-true">Yes</div>
+                <div class="string-selector-option" id="auto-capture-selector-false">No</div>
+            </div>
         </div>
         <h2>Players</h2>
         <div id="player-configuration-container">
@@ -107,6 +124,12 @@ function displayConfigurationScreen(){
     for(let s = 3; s <= 12; s++){
         document.getElementById(`color-count-selector-${s}`).addEventListener("click", e => handleNumberSelectorInput("color", s));
     }
+    
+    document.getElementById(`end-condition-selector-100`).addEventListener("click", e => handleStringSelectorInput("end", "all"));
+    document.getElementById(`end-condition-selector-50`).addEventListener("click", e => handleStringSelectorInput("end", "fptp"));
+
+    document.getElementById(`auto-capture-selector-true`).addEventListener("click", e => handleStringSelectorInput("autocapture", true));
+    document.getElementById(`auto-capture-selector-false`).addEventListener("click", e => handleStringSelectorInput("autocapture", false));
 
     document.getElementById(`opponent-type-selector-human`).addEventListener("click", e => handleStringSelectorInput("opponent", "human"));
     document.getElementById(`opponent-type-selector-comp-easy`).addEventListener("click", e => handleStringSelectorInput("opponent", "comp-easy"));
@@ -119,6 +142,18 @@ function displayConfigurationScreen(){
         document.getElementById(`opponent-type-selector-human`).classList.add("selected");
     } else {
         document.getElementById(`opponent-type-selector-comp-easy`).classList.add("selected");
+    }
+
+    if(captureAllTiles){
+        document.getElementById(`end-condition-selector-100`).classList.add("selected");
+    } else {
+        document.getElementById(`end-condition-selector-50`).classList.add("selected");
+    }
+
+    if(autoCapture){
+        document.getElementById(`auto-capture-selector-true`).classList.add("selected");
+    } else {
+        document.getElementById(`auto-capture-selector-false`).classList.add("selected");
     }
 
     document.getElementById('play-button').addEventListener("click", e => handleStartGame());
@@ -145,6 +180,34 @@ function handleStringSelectorInput(selector, option){
         } else if (option === "comp-easy"){
             player2.isHuman = false;
             document.getElementById(`opponent-type-selector-comp-easy`).classList.add("selected");
+        }
+    } else if (selector == "end"){
+        if(captureAllTiles){
+            document.getElementById(`end-condition-selector-100`).classList.remove("selected");
+        } else {
+            document.getElementById(`end-condition-selector-50`).classList.remove("selected");
+        }
+
+        captureAllTiles = (option === "all");
+
+        if(captureAllTiles){
+            document.getElementById(`end-condition-selector-100`).classList.add("selected");
+        } else {
+            document.getElementById(`end-condition-selector-50`).classList.add("selected");
+        }
+    } else if (selector == "autocapture"){
+        if(autoCapture){
+            document.getElementById(`auto-capture-selector-true`).classList.remove("selected");
+        } else {
+            document.getElementById(`auto-capture-selector-false`).classList.remove("selected");
+        }
+
+        autoCapture = option;
+
+        if(autoCapture){
+            document.getElementById(`auto-capture-selector-true`).classList.add("selected");
+        } else {
+            document.getElementById(`auto-capture-selector-false`).classList.add("selected");
         }
     }
 }
@@ -337,7 +400,7 @@ function switchColor(gameStateId, color){
     gameStates[gameStateId].history.push(`Player${prevPlayer} switched to color ${color}`)
     console.log(gameStates[gameStateId])
 
-    if(gameStates[gameStateId].player1.claimedTiles + gameStates[gameStateId].player2.claimedTiles == gridHeight * gridWidth){
+    if(isGameOver(gameStateId)){
          if(gameStates[gameStateId].player1.claimedTiles > gameStates[gameStateId].player2.claimedTiles){
             gameStates[gameStateId].winner = 1;
         } else if (gameStates[gameStateId].player1.claimedTiles < gameStates[gameStateId].player2.claimedTiles){
@@ -358,6 +421,18 @@ function switchColor(gameStateId, color){
     }
 
     return "success";
+}
+
+function isGameOver(gameStateId){
+    if(gameStateId == 0 && captureAllTiles){
+        var captured = gameStates[gameStateId].player1.claimedTiles + gameStates[gameStateId].player2.claimedTiles;
+        var total = gridHeight * gridWidth;
+        return ( captured == total );
+    } 
+
+    // otherwise use first-past-the-post
+    var thePost = gridHeight * gridWidth / 2;
+    return (gameStates[gameStateId].player1.claimedTiles > thePost) || (gameStates[gameStateId].player2.claimedTiles > thePost);
 }
 
 function endGame(winner){
@@ -387,12 +462,30 @@ function endGame(winner){
     document.getElementById("change-settings-button").addEventListener("click", e => displayConfigurationScreen());
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                  Closeness calculations
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function collapseConnections(gameStateId, capturedTiles){
+    // for each in list of captured tiles
+
+    
+}
+
+function getClosenessGrids(gameStateId){
+    // returns two grids of the set size, one for each player.
+
+    // 0 is max closeness. 
+    // null is a tile that is unreachable to this player
+    // 1 indicates one connection away, 2 is a walk of two away, etc
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                  Game state utilities
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-function addNewGameState(colorGrid, ownershipGrid, turn, history, message){
+function addNewGameState(colorGrid, ownershipGrid, turn, history, message, p1ClosenessGrid, p2ClosenessGrid){
     var newHistory = [...history, message];
     
     var player1Color = colorGrid[gridHeight - 1][0];
@@ -439,7 +532,9 @@ function copyGameState(originalId){
         gameStates[originalId].ownershipGrid,
         gameStates[originalId].turn,
         gameStates[originalId].history,
-        `Game state copied from ${originalId}`
+        `Game state copied from ${originalId}`,
+        gameStates[originalId].player1.closenessGrid,
+        gameStates[originalId].player2.closenessGrid,
     );
 
     return gameStates.length - 1;
@@ -461,7 +556,7 @@ function oneTurnLookAhead(){
         var thisCopy = copyGameState(0);
         var result = switchColor(thisCopy, co)
         
-        if(result == "win"){
+        if(result == "win" && gameStates[thisCopy].player2.claimedTiles >= gameStates[thisCopy].player1.claimedTiles){ 
             return co;
         } else if (result == "success"){
             options.push({
