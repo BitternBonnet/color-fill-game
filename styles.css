@@ -48,4 +48,94 @@ h1 {
 
 #game-over{
     text-align: center;
+    justify-content: center;
+}
+
+.button {
+    padding: 5px;
+    margin: 5px;
+    background-color: black;
+    color: white;
+    width: 100px;
+    height: 35px;
+    align-content: center;
+    text-align: center;
+}
+
+#game-over .button {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#configuration-container {
+    width: 700px;
+    margin: auto;
+}
+
+.configuration-input {
+    display: flex;
+    margin: 15px;
+}
+
+.configuration-input .label {
+    padding-right: 15px;
+    align-content: center;
+}
+
+.configuration-input .number-selector {
+    width: min-content;
+    text-align: center;
+    border: 5px solid black;
+    display: flex;
+}
+
+.configuration-input .number-selector .number-selector-option {
+    width: 30px;
+    height: 20px;
+    align-content: center;
+    border: 1px solid black;
+    background-color: gray;
+}
+
+.number-selector-option.selected {
+    background-color: lightgray !important;
+}
+
+#player-configuration-container {
+    display: flex;
+}
+
+.player-configuration {
+    width: 45%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.configuration-input .string-selector {
+    width: min-content;
+    text-align: center;
+    border: 5px solid black;
+    display: flex;
+}
+
+.configuration-input .string-selector .string-selector-option {
+    width: min-content;
+    padding-left: 5px;
+    padding-right: 5px;
+    height: 20px;
+    align-content: center;
+    border: 1px solid black;
+    background-color: gray;
+}
+
+.string-selector-option.selected {
+    background-color: lightgray !important;
+}
+
+.text-field {
+    background-color: lightgray;
+    width: 200px;
+    height: 20px;
+    border: 5px solid black;
+    padding: 5px;
 }

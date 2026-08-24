@@ -3,13 +3,11 @@
 //                  Configuration
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-var gridWidth = 10
-var gridHeight = 7
-var colorSet = 10
+var gridWidth = 8;
+var gridHeight = 7;
+var colorSet = 6;
 
 var gameStates = [];
-
-var computerImaginationDepth = 2;
 
 var colorBank = [
     "#ff389f",
@@ -21,7 +19,7 @@ var colorBank = [
     "#44c1ff",
     "#ffa113",
     "#f4f4f4",
-    "#20ffb1",
+    "#6fffcd",
     "#ff1c1c",
     "#ffa5e3",
 ]
@@ -37,13 +35,142 @@ var player2 = {
 }
 
 onload = function(){
-    startGame();
+    displayConfigurationScreen();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                  Gameplay setup
+//                  Game configuration
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function displayConfigurationScreen(){
+    var configurationHTML = `<div id="configuration-container">
+        <h2>Game Board</h2>
+        <div class="configuration-input" id="board-height">
+            <div class="label">Board Height</div>
+            <div class="number-selector" id="board-height-selector"></div>
+        </div>
+        <div class="configuration-input" id="board-width">
+            <div class="label">Board Width</div>
+            <div class="number-selector" id="board-width-selector"></div>
+        </div>
+        <div class="configuration-input" id="color-count">
+            <div class="label">Color Options</div>
+            <div class="number-selector" id="color-count-selector"></div>
+        </div>
+        <h2>Players</h2>
+        <div id="player-configuration-container">
+            <div class="player-configuration">
+                <h3>Player 1</h3>
+                <div class="configuration-input">
+                    <div class="label">Name</div>
+                    <div class="text-field" id="player-1-name-input" contenteditable="true">${player1.name}</div>
+                </div>
+            </div>
+            <div class="player-configuration">
+                <h3>Player 2</h3>
+                <div class="configuration-input">
+                    <div class="label">Name</div>
+                    <div class="text-field" id="player-2-name-input" contenteditable="true">${player2.name}</div>
+                </div>
+                <div class="configuration-input">
+                    <div class="label">Type</div>
+                    <div class="string-selector" id="opponent-type-selector">
+                        <div class="string-selector-option" id="opponent-type-selector-human">Human</div>
+                        <div class="string-selector-option" id="opponent-type-selector-comp-easy">Computer</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <p class='button' id='play-button'>Start Game</p>
+        </div>
+    </div>`;
+    document.getElementById("main-content").innerHTML = configurationHTML;
+
+    for(let s = 3; s < 16; s++){
+        document.getElementById(`board-height-selector`).innerHTML += `<div class="number-selector-option" id="board-height-selector-${s}">${s}</div>`;
+    }
+    for(let s = 3; s < 16; s++){
+        document.getElementById(`board-height-selector-${s}`).addEventListener("click", e => handleNumberSelectorInput("height", s));
+    }
+
+    for(let s = 3; s < 16; s++){
+        document.getElementById(`board-width-selector`).innerHTML += `<div class="number-selector-option" id="board-width-selector-${s}">${s}</div>`;
+    }
+    for(let s = 3; s < 16; s++){
+        document.getElementById(`board-width-selector-${s}`).addEventListener("click", e => handleNumberSelectorInput("width", s));
+    }
+
+    for(let s = 3; s <= 12; s++){
+        document.getElementById(`color-count-selector`).innerHTML += `<div class="number-selector-option" id="color-count-selector-${s}">${s}</div>`;
+    }
+    for(let s = 3; s <= 12; s++){
+        document.getElementById(`color-count-selector-${s}`).addEventListener("click", e => handleNumberSelectorInput("color", s));
+    }
+
+    document.getElementById(`opponent-type-selector-human`).addEventListener("click", e => handleStringSelectorInput("opponent", "human"));
+    document.getElementById(`opponent-type-selector-comp-easy`).addEventListener("click", e => handleStringSelectorInput("opponent", "comp-easy"));
+    
+    document.getElementById(`board-height-selector-${gridHeight}`).classList.add("selected");
+    document.getElementById(`board-width-selector-${gridWidth}`).classList.add("selected");
+    document.getElementById(`color-count-selector-${colorSet}`).classList.add("selected");
+
+    if(player2.isHuman) {
+        document.getElementById(`opponent-type-selector-human`).classList.add("selected");
+    } else {
+        document.getElementById(`opponent-type-selector-comp-easy`).classList.add("selected");
+    }
+
+    document.getElementById('play-button').addEventListener("click", e => handleStartGame());
+}
+
+function handleStartGame(){
+    player1.name = document.getElementById("player-1-name-input").innerText; 
+    player2.name = document.getElementById("player-2-name-input").innerText; 
+    
+    startGame();
+}
+
+function handleStringSelectorInput(selector, option){
+    if(selector === "opponent"){
+        if(player2.isHuman){
+            document.getElementById(`opponent-type-selector-human`).classList.remove("selected");
+        } else {
+            document.getElementById(`opponent-type-selector-comp-easy`).classList.remove("selected");
+        }
+
+        if(option === "human"){
+            player2.isHuman = true;
+            document.getElementById(`opponent-type-selector-human`).classList.add("selected");
+        } else if (option === "comp-easy"){
+            player2.isHuman = false;
+            document.getElementById(`opponent-type-selector-comp-easy`).classList.add("selected");
+        }
+    }
+}
+
+function handleNumberSelectorInput(selector, index){
+    if(selector === "height"){
+        document.getElementById(`board-height-selector-${gridHeight}`).classList.remove("selected");
+        gridHeight = index;
+        document.getElementById(`board-height-selector-${gridHeight}`).classList.add("selected");
+    } else if(selector === "width"){
+        document.getElementById(`board-width-selector-${gridWidth}`).classList.remove("selected");
+        gridWidth = index;
+        document.getElementById(`board-width-selector-${gridWidth}`).classList.add("selected");
+    } else if(selector === "color"){
+        document.getElementById(`color-count-selector-${colorSet}`).classList.remove("selected");
+        colorSet = index;
+        document.getElementById(`color-count-selector-${colorSet}`).classList.add("selected");
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                  Game setup
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 function startGame(){
+    gameStates = [];
     populateStartingColors();
 
     createBasicLayout();
@@ -213,7 +340,6 @@ function switchColor(gameStateId, color){
     if(gameStates[gameStateId].player1.claimedTiles + gameStates[gameStateId].player2.claimedTiles == gridHeight * gridWidth){
          if(gameStates[gameStateId].player1.claimedTiles > gameStates[gameStateId].player2.claimedTiles){
             gameStates[gameStateId].winner = 1;
-            
         } else if (gameStates[gameStateId].player1.claimedTiles < gameStates[gameStateId].player2.claimedTiles){
             gameStates[gameStateId].winner = 2;
         } else {
@@ -235,7 +361,7 @@ function switchColor(gameStateId, color){
 }
 
 function endGame(winner){
-    var game = gameStates[0];
+    console.log(`game ends with winner ${winner}`);
 
     document.getElementById("color-container").style.visibility = "hidden";
     document.getElementById("player-1-turn-indicator").style.visibility = "hidden";
@@ -245,15 +371,20 @@ function endGame(winner){
 
     var winnerHtml = `<div id="game-over">`
     if(winner == 1){
-        winnerHtml += `<h2 style="text-shadow: 1px 0px 5px ${colorBank[game.player1.currentColor]}">${[player1.name]} wins!</h2>`
+        winnerHtml += `<h2 style="text-shadow: 1px 0px 5px ${colorBank[gameStates[0].player1.currentColor]}">${[player1.name]} wins!</h2>`
     } else if (winner == 2){
-        winnerHtml += `<h2 style="text-shadow: 1px 0px 5px ${colorBank[game.player2.currentColor]}">${[player2.name]} wins!</h2>`
+        winnerHtml += `<h2 style="text-shadow: 1px 0px 5px ${colorBank[gameStates[0].player2.currentColor]}">${[player2.name]} wins!</h2>`
     } else {
         winnerHtml += `<h2>It's a draw!</h2>`
     }
-    winnerHtml += "<div id='play-again-button'>Play Again</div></div>"
+    winnerHtml += `<p class='button' id='play-again-button'>Play Again</p>
+        <p class='button' id='change-settings-button'>Change Settings</p>
+    </div>`;
 
     document.getElementById("main-content").innerHTML += winnerHtml;
+
+    document.getElementById("play-again-button").addEventListener("click", e => startGame());
+    document.getElementById("change-settings-button").addEventListener("click", e => displayConfigurationScreen());
 }
 
 
