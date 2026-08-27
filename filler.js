@@ -11,6 +11,7 @@ var gameStates = [];
 
 var captureAllTiles = true;
 var autoCapture = false;
+var captureGoal = "";
 
 var colorBank = [
     "#ff389f",
@@ -162,6 +163,11 @@ function displayConfigurationScreen(){
 function handleStartGame(){
     player1.name = document.getElementById("player-1-name-input").innerText; 
     player2.name = document.getElementById("player-2-name-input").innerText; 
+
+    captureGoal = "";
+    if(!captureAllTiles){
+        captureGoal = ` / ${Math.ceil(gridHeight * gridWidth / 2)}`;
+    }
     
     startGame();
 }
@@ -234,13 +240,13 @@ function handleNumberSelectorInput(selector, index){
 
 function startGame(){
     gameStates = [];
-    populateStartingColors();
+    populateStartingGrids();
 
     createBasicLayout();
     drawGrid();
 }
 
-function populateStartingColors() {
+function populateStartingGrids() {
     var colorGrid = [];
     var ownershipGrid = [];
     for(var y = 0; y < gridHeight; y++){
@@ -267,24 +273,85 @@ function populateStartingColors() {
         colorGrid.push(newColorRow)
         ownershipGrid.push(newOwnershipRow)
     }
-    
-    ownershipGrid[gridHeight - 1][0] = 1;
-    ownershipGrid[0][gridWidth - 1] = 2;
 
-    addNewGameState(colorGrid, ownershipGrid, 0, [], "Initialize game")
+    var p1Start = {x: 0, y: gridHeight - 1};
+    var p2Start = {x: gridWidth - 1, y: 0};
+    
+    ownershipGrid[p1Start.y][p1Start.x] = 1;
+    ownershipGrid[p2Start.y][p2Start.x] = 2;
+
+    var p1Links = [];
+    var p2Links = [];
+    for (var y = 0; y < gridHeight; y++) {
+        for (var x = 0; x < gridWidth; x++) {
+            if (y + 1 < gridHeight) {
+                p1Links.push([
+                    {
+                        x: x,
+                        y: y
+                    },
+                    {
+                        x: x,
+                        y: y + 1
+                    }
+                ]);
+                p2Links.push([
+                    {
+                        x: x,
+                        y: y
+                    },
+                    {
+                        x: x,
+                        y: y + 1
+                    }
+                ]);
+
+            }
+            if (x + 1 < gridWidth) {
+                p1Links.push([
+                    {
+                        x: x,
+                        y: y
+                    },
+                    {
+                        x: x + 1,
+                        y: y
+                    }
+                ]);
+
+
+                p2Links.push([
+                    {
+                        x: x,
+                        y: y
+                    },
+                    {
+                        x: x + 1,
+                        y: y
+                    }
+                ]);
+            }
+        }
+    }
+
+    addNewGameState(colorGrid, ownershipGrid, 0, [], p1Links, p2Links, "Initialize game");
+    captureNewLink(0, 1, p1Start.y, p1Start.x);
+    captureNewLink(0, 2, p2Start.y, p2Start.x);
+
+    console.log(gameStates[0]);
 }
 
 function createBasicLayout(){
     var basicLayoutHTML = `<div id="game-state-container">
         <div class="player current-player" id="player-1" style="outline-color: ${colorBank[gameStates[0].player1.currentColor]}">
             <h2>${player1.name}</h2>
-            <p id="player-1-score">${gameStates[0].player1.claimedTiles}</p>
+            <p id="player-1-score">${gameStates[0].player1.claimedTiles}${captureGoal}</p>
             <p style="font-weight: bold;" id="player-1-turn-indicator">Your turn!</p>
         </div>
         <div id="game-grid"></div>
         <div class="player" id="player-2" style="outline-color: ${colorBank[gameStates[0].player2.currentColor]}"2>
             <h2>${player2.name}</h2>
-            <p id="player-2-score">${gameStates[0].player2.claimedTiles}</p>
+            <p id="player-2-score">${gameStates[0].player2.claimedTiles}${captureGoal}</p>
             <p style="visibility: hidden; font-weight: bold;" id="player-2-turn-indicator">Your turn!</p>
         </div>
     </div>
@@ -379,9 +446,19 @@ function switchColor(gameStateId, color){
                     x < (gridWidth - 1) && gameStates[gameStateId].ownershipGrid[y][x+1] == prevPlayer
             )){
                 gameStates[gameStateId].ownershipGrid[y][x] = prevPlayer;
+                captureNewLink(gameStateId, prevPlayer, y, x);
                 captured += 1;
             }
+        }
+    }
 
+    // auto-capture landlocked tiles
+    if(gameStateId != 0 || autoCapture){
+        captured += claimLandlockedTiles(gameStateId, prevPlayer);
+    }
+
+    for(var y = 0; y < gridHeight; y++){
+        for(var x = 0; x < gridWidth; x++){
             if(gameStates[gameStateId].ownershipGrid[y][x] == prevPlayer){
                 gameStates[gameStateId].colorGrid[y][x] = color;
                 if(updateUI) document.getElementById(`game-grid-tile-${y}-${x}`).style.backgroundColor = colorBank[color];
@@ -391,10 +468,10 @@ function switchColor(gameStateId, color){
     
     if(gameStates[gameStateId].turn%2){
         gameStates[gameStateId].player1.claimedTiles += captured;
-        if(updateUI) document.getElementById("player-1-score").innerHTML = gameStates[gameStateId].player1.claimedTiles;
+        if(updateUI) document.getElementById("player-1-score").innerHTML = `${gameStates[gameStateId].player1.claimedTiles}${captureGoal}`;
     } else {
         gameStates[gameStateId].player2.claimedTiles += captured;
-        if(updateUI) document.getElementById("player-2-score").innerHTML = gameStates[gameStateId].player2.claimedTiles;
+        if(updateUI) document.getElementById("player-2-score").innerHTML = `${gameStates[gameStateId].player2.claimedTiles}${captureGoal}`;
     }
 
     gameStates[gameStateId].history.push(`Player${prevPlayer} switched to color ${color}`)
@@ -421,6 +498,32 @@ function switchColor(gameStateId, color){
     }
 
     return "success";
+}
+
+function claimLandlockedTiles(gameStateId, player){
+    var captured = 0;
+    var closenesses = getClosenessGrids(gameStateId);
+    console.log(closenesses);
+
+    for(var y = 0; y < gridHeight; y++){
+        for(var x = 0; x < gridWidth; x++){
+            if(player == 1){
+                if(gameStates[gameStateId].ownershipGrid[y][x] == null && closenesses.player2[y][x] == null && closenesses.player1[y][x] != null){
+                    gameStates[gameStateId].ownershipGrid[y][x] = player;
+                    captureNewLink(gameStateId, player, y, x);
+                    captured += 1;
+                }
+            } else if(player == 2){
+                    if(gameStates[gameStateId].ownershipGrid[y][x] == null && closenesses.player1[y][x] == null && closenesses.player2[y][x] != null){
+                        gameStates[gameStateId].ownershipGrid[y][x] = player;
+                        captureNewLink(gameStateId, player, y, x);
+                        captured += 1;
+                }
+            }
+        }
+    }
+
+    return captured;
 }
 
 function isGameOver(gameStateId){
@@ -466,26 +569,145 @@ function endGame(winner){
 //                  Closeness calculations
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-function collapseConnections(gameStateId, capturedTiles){
-    // for each in list of captured tiles
+function captureNewLink(gameStateId, capturedBy, capturedY, capturedX){
+    // remove this link from opponent's links
+    if(capturedBy == 1){
+        gameStates[gameStateId].player2.links = gameStates[gameStateId].player2.links.filter(item => !(
+            (item[0].x == capturedX && item[0].y == capturedY) || 
+            (item[1].x == capturedX && item[1].y == capturedY)
+        ));
+    } else if (capturedBy == 2){
+        gameStates[gameStateId].player1.links = gameStates[gameStateId].player1.links.filter(item => !(
+            (item[0].x == capturedX && item[0].y == capturedY) || 
+            (item[1].x == capturedX && item[1].y == capturedY)
+        ));
+    } 
 
-    
+    // collapse this link in current player's links
+    var start;
+    if(capturedBy == 1){ 
+        start = {x: 0, y: gridHeight - 1}; // p1 Start
+    } else if(capturedBy == 2){
+        start = {x: gridWidth - 1, y: 0}; // p2 Start
+    }
+
+    if(start.y == capturedY && start.x == capturedX){
+        return; // if this is the starting tile there are no links to collapse
+    }
+
+    if(capturedBy == 1){
+        collapseLinksForPlayer1(gameStateId, capturedY, capturedX);
+    } else if (capturedBy == 2){
+        collapseLinksForPlayer2(gameStateId, capturedY, capturedX);
+    }
+}
+
+function collapseLinksForPlayer1(gameStateId, y, x){
+    for(var l = 0; l < gameStates[gameStateId].player1.links.length; l++){
+        for(var p = 0; p < 2; p++){
+            var currentPoint = gameStates[gameStateId].player1.links[l][p]
+            if(currentPoint.y == y && currentPoint.x == x){
+                gameStates[gameStateId].player1.links[l][p] = {x: 0, y: gridHeight - 1};
+            }
+        }
+    }
+
+    gameStates[gameStateId].player1.links = gameStates[gameStateId].player1.links.filter(item => !(item[0].x == item[1].x && item[0].y == item[1].y));
+}
+
+function collapseLinksForPlayer2(gameStateId, y, x){
+    for(var l = 0; l < gameStates[gameStateId].player2.links.length; l++){
+        for(var p = 0; p < 2; p++){
+            var currentPoint = gameStates[gameStateId].player2.links[l][p]
+            if(currentPoint.y == y && currentPoint.x == x){
+                gameStates[gameStateId].player2.links[l][p] = {x: gridWidth - 1, y: 0};
+            }
+        }
+    }
+
+    gameStates[gameStateId].player2.links = gameStates[gameStateId].player2.links.filter(item => !(item[0].x == item[1].x && item[0].y == item[1].y));
 }
 
 function getClosenessGrids(gameStateId){
-    // returns two grids of the set size, one for each player.
-
     // 0 is max closeness. 
-    // null is a tile that is unreachable to this player
+    // null is a tile that is not linked to this player
     // 1 indicates one connection away, 2 is a walk of two away, etc
-}
 
+    // returns two grids of the set size, one for each player.
+    var grids = {
+        player1: [],
+        player2: []
+    };
+ 
+    // populate grid with null tiles/set already-owned tiles to closeness 0.
+    for(var y = 0; y < gridHeight; y++){
+        var p1Row = [];
+        var p2Row = [];
+
+        for(var x = 0; x < gridWidth; x++){
+            var owner = gameStates[gameStateId].ownershipGrid[y][x];
+            if(owner == 1){
+                p1Row.push(0);
+                p2Row.push(null);
+            } else if (owner == 2){
+                p1Row.push(null);
+                p2Row.push(0);
+            } else {
+                p1Row.push(null);
+                p2Row.push(null);
+            }
+        }
+
+        grids.player1.push(p1Row);
+        grids.player2.push(p2Row);
+    }
+
+    var nodeQueue = [{x: 0, y: gridHeight - 1, c: 0}]; // start the queue with p1's starting tile
+    var p1Links = gameStates[gameStateId].player1.links;
+    while(nodeQueue.length > 0){
+        var curNode = nodeQueue.pop();
+        var closeness = curNode.c + 1;
+
+        for(var l = 0; l < p1Links.length; l++){
+            for(var n = 0; n < 2; n++){
+                if(p1Links[l][n].x == curNode.x && p1Links[l][n].y == curNode.y){
+                    var oppositeNode = p1Links[l][(n + 1) % 2];
+                    if(grids.player1[oppositeNode.y][oppositeNode.x] == null || grids.player1[oppositeNode.y][oppositeNode.x] > closeness){
+                        grids.player1[oppositeNode.y][oppositeNode.x] = closeness;
+                        nodeQueue.push({x: oppositeNode.x, y: oppositeNode.y, c: closeness})
+                    }
+                }
+            }
+        }
+    }
+
+    nodeQueue = [{x: gridWidth - 1, y: 0, c: 0}]; // start the queue with p2's starting tile
+    var p2Links = gameStates[gameStateId].player2.links;
+    while(nodeQueue.length > 0){
+        var curNode = nodeQueue.pop();
+        var closeness = curNode.c + 1;
+
+        for(var l = 0; l < p2Links.length; l++){
+            for(var n = 0; n < 2; n++){
+                if(p2Links[l][n].x == curNode.x && p2Links[l][n].y == curNode.y){
+                    var oppositeNode = p2Links[l][(n + 1) % 2];
+                    if(grids.player2[oppositeNode.y][oppositeNode.x] == null || grids.player2[oppositeNode.y][oppositeNode.x] > closeness){
+                        grids.player2[oppositeNode.y][oppositeNode.x] = closeness;
+                        nodeQueue.push({x: oppositeNode.x, y: oppositeNode.y, c: closeness})
+                    }
+                }
+            }
+        }
+    }
+        
+    return grids;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                  Game state utilities
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-function addNewGameState(colorGrid, ownershipGrid, turn, history, message, p1ClosenessGrid, p2ClosenessGrid){
+function addNewGameState(colorGrid, ownershipGrid, turn, history, p1Links, p2Links, message){
     var newHistory = [...history, message];
     
     var player1Color = colorGrid[gridHeight - 1][0];
@@ -497,11 +719,13 @@ function addNewGameState(colorGrid, ownershipGrid, turn, history, message, p1Clo
         turn: turn,
         player1: {
             currentColor: player1Color,
-            claimedTiles: 1
+            claimedTiles: 0,
+            links: []
         },
         player2: {
             currentColor: player2Color,
-            claimedTiles: 1
+            claimedTiles: 0,
+            links: []
         },
         history: newHistory,
     };
@@ -513,13 +737,39 @@ function addNewGameState(colorGrid, ownershipGrid, turn, history, message, p1Clo
             newColorRow.push(colorGrid[y][x]);
             newOwnershipRow.push(ownershipGrid[y][x]);
             if(ownershipGrid[y][x] == 1){
-                player1.claimedTiles++;
+                newGameState.player1.claimedTiles++;
             } else if (ownershipGrid[y][x] == 2){
-                player2.claimedTiles++;
+                newGameState.player2.claimedTiles++;
             }
         }
         newGameState.colorGrid.push(newColorRow);
         newGameState.ownershipGrid.push(newOwnershipRow);
+    }
+
+    for(var l = 0; l < p1Links.length; l++){
+        newGameState.player1.links.push([
+            {
+                x: p1Links[l][0].x,
+                y: p1Links[l][0].y
+            },
+            {
+                x: p1Links[l][1].x,
+                y: p1Links[l][1].y
+            }
+        ]);
+    }
+
+    for(var l = 0; l < p2Links.length; l++){
+        newGameState.player2.links.push([
+            {
+                x: p2Links[l][0].x,
+                y: p2Links[l][0].y
+            },
+            {
+                x: p2Links[l][1].x,
+                y: p2Links[l][1].y
+            }
+        ]);
     }
 
     gameStates.push(newGameState);
@@ -532,12 +782,28 @@ function copyGameState(originalId){
         gameStates[originalId].ownershipGrid,
         gameStates[originalId].turn,
         gameStates[originalId].history,
-        `Game state copied from ${originalId}`,
-        gameStates[originalId].player1.closenessGrid,
-        gameStates[originalId].player2.closenessGrid,
+        gameStates[originalId].player1.links,
+        gameStates[originalId].player2.links,
+        `Game state copied from ${originalId}`
     );
 
     return gameStates.length - 1;
+}
+
+function countRemainingColors(gameStateId){
+    var colorCounts = [];
+    for(var c = 0; c < colorSet; c++ ){
+        colorCounts.push(0);
+    }
+
+    for(var y = 0; y < gridHeight; y++){
+        for(var x = 0; x < gridWidth; x++){
+            var color = gameStates[gameStateId].colorGrid[y][x];
+            colorCounts[color]++;
+        }
+    }
+
+    return colorCounts;
 }
 
 
@@ -551,7 +817,9 @@ function takeComputerTurn(){
 }
 
 function oneTurnLookAhead(){
-    var options = []
+    var options = [];
+    var backupOptions = [];
+
     for(var co = 0; co < colorSet; co++){
         var thisCopy = copyGameState(0);
         var result = switchColor(thisCopy, co)
@@ -563,10 +831,42 @@ function oneTurnLookAhead(){
                 color: co,
                 score: gameStates[thisCopy].player2.claimedTiles
             });
+        } else if (result != "bad"){
+            backupOptions.push({
+                color: co,
+                score: gameStates[thisCopy].player2.claimedTiles
+            });
         }
     }
 
+    // sort by which nets the highest score
     options.sort((a, b) => b.score - a.score);
+
+    // if the only move is a losing move, make the best losing move
+    if(options.length == 0){
+        console.log("No viable options, forced to play a losing move").
+        backupOptions.sort((a, b) => b.score - a.score);
+        return backupOptions[0].color;
+    }
+
+    // detect endgame
+    if(options.filter(item => item.score == options[0].score).length == options.length){
+        console.log("all options equally viable, will attempt to find something landlocked.")
+        
+        var closenesses = getClosenessGrids(0);
+        for(var y = 0; y < gridHeight; y++){
+            for(var x = 0; x < gridWidth; x++){
+                if(gameStates[0].ownershipGrid[y][x] == null && closenesses.player1[y][x] == null && closenesses.player2[y][x] != null){
+                    if(options.find(item => item.color == gameStates[0].colorGrid[y][x])){
+                        console.log("Switching to a landlocked color option.")
+                        return gameStates[0].colorGrid[y][x];
+                    }
+                }
+            }
+        }
+    }
+
     console.log(options);
+    console.log("Switching to highest-scoring color option.")
     return options[0].color;
 }
