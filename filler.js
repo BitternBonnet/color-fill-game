@@ -13,6 +13,10 @@ var captureAllTiles = true;
 var autoCapture = false;
 var captureGoal = "";
 
+var computerLookAhead = 1;
+var maxCloseness = 0;
+var currentComputerTurnOptions = [];
+
 var colorBank = [
     "#ff389f",
     "#6b36ff",
@@ -22,10 +26,8 @@ var colorBank = [
     "#ab00cd",
     "#44c1ff",
     "#ffa113",
-    "#f4f4f4",
-    "#6fffcd",
     "#ff1c1c",
-    "#ffa5e3",
+    "#f4f4f4",
 ]
 
 var player1 = {
@@ -94,9 +96,25 @@ function displayConfigurationScreen(){
                     <div class="label">Type</div>
                     <div class="string-selector" id="opponent-type-selector">
                         <div class="string-selector-option" id="opponent-type-selector-human">Human</div>
-                        <div class="string-selector-option" id="opponent-type-selector-comp-easy">Computer</div>
+                        <div class="string-selector-option" id="opponent-type-selector-comp-easy">NPC 1</div>
+                        <div class="string-selector-option" id="opponent-type-selector-comp-mid">NPC 3</div>
+                        <div class="string-selector-option" id="opponent-type-selector-comp-hard">NPC 5</div>
                     </div>
                 </div>
+                <div class="selector-info">
+                        <div style="display: none" class="selector-info-option" id="opponent-type-selector-human-info">
+                            Local multiplayer game
+                        </div>
+                        <div style="display: none" class="selector-info-option" id="opponent-type-selector-comp-easy-info">
+                            Single-player game against computer opponent that strategizes 1 turn ahead.
+                        </div>
+                        <div style="display: none" class="selector-info-option" id="opponent-type-selector-comp-mid-info">
+                            Single-player game against computer opponent that strategizes 3 turns ahead.
+                        </div>
+                        <div style="display: none" class="selector-info-option" id="opponent-type-selector-comp-hard-info">
+                            Single-player game against computer opponent that strategizes 5 turns ahead.
+                        </div>
+                    </div>
             </div>
         </div>
         <div>
@@ -119,10 +137,10 @@ function displayConfigurationScreen(){
         document.getElementById(`board-width-selector-${s}`).addEventListener("click", e => handleNumberSelectorInput("width", s));
     }
 
-    for(let s = 3; s <= 12; s++){
+    for(let s = 3; s <= 10; s++){
         document.getElementById(`color-count-selector`).innerHTML += `<div class="number-selector-option" id="color-count-selector-${s}">${s}</div>`;
     }
-    for(let s = 3; s <= 12; s++){
+    for(let s = 3; s <= 10; s++){
         document.getElementById(`color-count-selector-${s}`).addEventListener("click", e => handleNumberSelectorInput("color", s));
     }
     
@@ -134,6 +152,8 @@ function displayConfigurationScreen(){
 
     document.getElementById(`opponent-type-selector-human`).addEventListener("click", e => handleStringSelectorInput("opponent", "human"));
     document.getElementById(`opponent-type-selector-comp-easy`).addEventListener("click", e => handleStringSelectorInput("opponent", "comp-easy"));
+    document.getElementById(`opponent-type-selector-comp-mid`).addEventListener("click", e => handleStringSelectorInput("opponent", "comp-mid"));
+    document.getElementById(`opponent-type-selector-comp-hard`).addEventListener("click", e => handleStringSelectorInput("opponent", "comp-hard"));
     
     document.getElementById(`board-height-selector-${gridHeight}`).classList.add("selected");
     document.getElementById(`board-width-selector-${gridWidth}`).classList.add("selected");
@@ -141,8 +161,16 @@ function displayConfigurationScreen(){
 
     if(player2.isHuman) {
         document.getElementById(`opponent-type-selector-human`).classList.add("selected");
-    } else {
+        document.getElementById(`opponent-type-selector-human-info`).style.display = "block";
+    } else if(computerLookAhead == 1){
         document.getElementById(`opponent-type-selector-comp-easy`).classList.add("selected");
+        document.getElementById(`opponent-type-selector-comp-easy-info`).style.display = "block";
+    } else if(computerLookAhead == 3){
+        document.getElementById(`opponent-type-selector-comp-mid`).classList.add("selected");
+        document.getElementById(`opponent-type-selector-comp-mid-info`).style.display = "block";
+    } else if(computerLookAhead == 5){
+        document.getElementById(`opponent-type-selector-comp-hard`).classList.add("selected");
+        document.getElementById(`opponent-type-selector-comp-hard-info`).style.display = "block";
     }
 
     if(captureAllTiles){
@@ -174,18 +202,35 @@ function handleStartGame(){
 
 function handleStringSelectorInput(selector, option){
     if(selector === "opponent"){
-        if(player2.isHuman){
-            document.getElementById(`opponent-type-selector-human`).classList.remove("selected");
-        } else {
-            document.getElementById(`opponent-type-selector-comp-easy`).classList.remove("selected");
-        }
+        document.getElementById(`opponent-type-selector-human`).classList.remove("selected");
+        document.getElementById(`opponent-type-selector-comp-easy`).classList.remove("selected");
+        document.getElementById(`opponent-type-selector-comp-mid`).classList.remove("selected");
+        document.getElementById(`opponent-type-selector-comp-hard`).classList.remove("selected");
+
+        document.getElementById(`opponent-type-selector-human-info`).style.display = "none";
+        document.getElementById(`opponent-type-selector-comp-easy-info`).style.display = "none";
+        document.getElementById(`opponent-type-selector-comp-mid-info`).style.display = "none";
+        document.getElementById(`opponent-type-selector-comp-hard-info`).style.display = "none";
 
         if(option === "human"){
             player2.isHuman = true;
             document.getElementById(`opponent-type-selector-human`).classList.add("selected");
+            document.getElementById(`opponent-type-selector-human-info`).style.display = "block";
         } else if (option === "comp-easy"){
             player2.isHuman = false;
+            computerLookAhead = 1
             document.getElementById(`opponent-type-selector-comp-easy`).classList.add("selected");
+            document.getElementById(`opponent-type-selector-comp-easy-info`).style.display = "block";
+        } else if (option === "comp-mid"){
+            player2.isHuman = false;
+            computerLookAhead = 3;
+            document.getElementById(`opponent-type-selector-comp-mid`).classList.add("selected");
+            document.getElementById(`opponent-type-selector-comp-mid-info`).style.display = "block";
+        } else if (option === "comp-hard"){
+            player2.isHuman = false;
+            computerLookAhead = 5;
+            document.getElementById(`opponent-type-selector-comp-hard`).classList.add("selected");
+            document.getElementById(`opponent-type-selector-comp-hard-info`).style.display = "block";
         }
     } else if (selector == "end"){
         if(captureAllTiles){
@@ -244,6 +289,11 @@ function startGame(){
 
     createBasicLayout();
     drawGrid();
+
+    maxCloseness = getClosenessScores(0).player1;
+
+    // OVERRIDE TODO REMOVE
+    // takeComputerTurn();
 }
 
 function populateStartingGrids() {
@@ -338,15 +388,41 @@ function populateStartingGrids() {
     captureNewLink(0, 1, p1Start.y, p1Start.x);
     captureNewLink(0, 2, p2Start.y, p2Start.x);
 
-    console.log(gameStates[0]);
+    // // OVERRIDE 
+    // var overrideColorGrid = [
+    //     [3, 2, 0, 0],
+    //     [1, 3, 0, 3],
+    //     [2, 2, 1, 2],
+    //     [2, 0, 3, 0]
+    // ];
+
+    // var overrideOwnershipGrid = [
+    //     [null, null, 2, 2],
+    //     [null, null, 2, null],
+    //     [1, 1, null, null],
+    //     [1, null, null, null]
+    // ]
+
+    // addNewGameState(overrideColorGrid, overrideOwnershipGrid, 5, [], p1Links, p2Links, "Initialize game");
+    // gameStates[0].player1.currentColor = 2;
+    // gameStates[0].player2.currentColor = 0;
+
+    // captureNewLink(0, 1, p1Start.y - 1, p1Start.x);
+    // captureNewLink(0, 1, p1Start.y - 1, p1Start.x + 1);
+    // captureNewLink(0, 1, p1Start.y, p1Start.x);
+    // captureNewLink(0, 2, p2Start.y, p2Start.x);
+    // captureNewLink(0, 2, p2Start.y, p2Start.x - 1);
+    // captureNewLink(0, 2, p2Start.y + 1, p2Start.x - 1);
+    
+    // printGameState(0);
 }
 
 function createBasicLayout(){
     var basicLayoutHTML = `<div id="game-state-container">
-        <div class="player current-player" id="player-1" style="outline-color: ${colorBank[gameStates[0].player1.currentColor]}">
+        <div class="player" id="player-1" style="outline-color: ${colorBank[gameStates[0].player1.currentColor]}">
             <h2>${player1.name}</h2>
             <p id="player-1-score">${gameStates[0].player1.claimedTiles}${captureGoal}</p>
-            <p style="font-weight: bold;" id="player-1-turn-indicator">Your turn!</p>
+            <p style="visibility: hidden; font-weight: bold;" id="player-1-turn-indicator">Your turn!</p>
         </div>
         <div id="game-grid"></div>
         <div class="player" id="player-2" style="outline-color: ${colorBank[gameStates[0].player2.currentColor]}"2>
@@ -366,6 +442,10 @@ function createBasicLayout(){
     for(let c = 0; c < colorSet; c++){
         document.getElementById(`color-button-${c}`).addEventListener("click", e => switchColor(0, c));
     }
+
+    var turn = gameStates[0].turn % 2 + 1;
+    document.getElementById(`player-${turn}`).classList.add("current-player");
+    document.getElementById(`player-${turn}-turn-indicator`).style.visibility = "visible";
 }
 
 function drawGrid(){
@@ -474,8 +554,7 @@ function switchColor(gameStateId, color){
         if(updateUI) document.getElementById("player-2-score").innerHTML = `${gameStates[gameStateId].player2.claimedTiles}${captureGoal}`;
     }
 
-    gameStates[gameStateId].history.push(`Player${prevPlayer} switched to color ${color}`)
-    console.log(gameStates[gameStateId])
+    gameStates[gameStateId].history.push(`Player${prevPlayer} switched to color ${color}`);
 
     if(isGameOver(gameStateId)){
          if(gameStates[gameStateId].player1.claimedTiles > gameStates[gameStateId].player2.claimedTiles){
@@ -628,6 +707,43 @@ function collapseLinksForPlayer2(gameStateId, y, x){
     gameStates[gameStateId].player2.links = gameStates[gameStateId].player2.links.filter(item => !(item[0].x == item[1].x && item[0].y == item[1].y));
 }
 
+function getClosenessScores(gameStateId){
+    var scores = {
+        player1: 0,
+        player2: 0,
+    }
+
+    if(gameStateId != 0 && gameStates[gameStateId].player1.closenessScore){
+        scores.player1 = gameStates[gameStateId].player1.closenessScore;
+        scores.player2 = gameStates[gameStateId].player2.closenessScore;
+        return scores;
+    }
+
+    getClosenessGrids(gameStateId);
+
+    for(var y = 0; y < gridHeight; y++){
+        for(var x = 0; x < gridWidth; x++){
+            if(gameStates[gameStateId].player1.closenesses[y][x] != null){
+                scores.player1 += gameStates[gameStateId].player1.closenesses[y][x] 
+            }
+            if(gameStates[gameStateId].player2.closenesses[y][x] != null){
+                scores.player2 += gameStates[gameStateId].player2.closenesses[y][x] 
+            }
+        }
+    }
+
+    var maxCloseness = 0;
+
+    gameStates[gameStateId].player1.closenessScore = scores.player1;
+    gameStates[gameStateId].player2.closenessScore = scores.player2;
+
+    return scores;
+}
+
+function getAdjustedClosenessScore(score){
+    return (maxCloseness - score)/maxCloseness;
+}
+
 function getClosenessGrids(gameStateId){
     // 0 is max closeness. 
     // null is a tile that is not linked to this player
@@ -638,6 +754,13 @@ function getClosenessGrids(gameStateId){
         player1: [],
         player2: []
     };
+
+    
+    if(gameStateId != 0 && gameStates[gameStateId].player1.closenesses){
+        grids.player1 = gameStates[gameStateId].player1.closenesses;
+        grids.player2 = gameStates[gameStateId].player2.closenesses;
+        return grids;
+    }
  
     // populate grid with null tiles/set already-owned tiles to closeness 0.
     for(var y = 0; y < gridHeight; y++){
@@ -681,6 +804,8 @@ function getClosenessGrids(gameStateId){
         }
     }
 
+    gameStates[gameStateId].player1.closenesses = grids.player1;
+
     nodeQueue = [{x: gridWidth - 1, y: 0, c: 0}]; // start the queue with p2's starting tile
     var p2Links = gameStates[gameStateId].player2.links;
     while(nodeQueue.length > 0){
@@ -699,6 +824,8 @@ function getClosenessGrids(gameStateId){
             }
         }
     }
+
+    gameStates[gameStateId].player2.closenesses = grids.player2;
         
     return grids;
 }
@@ -806,67 +933,175 @@ function countRemainingColors(gameStateId){
     return colorCounts;
 }
 
+function printGameState(gameStateId){
+    var printString = `GAME STATE ${gameStateId}`;
+
+    for(var y = 0; y < gridHeight; y++){
+        printString += "\n";
+        for(var x = 0; x < gridWidth; x++){
+            if(gameStates[gameStateId].ownershipGrid[y][x] == 1){
+                printString += " ░"; 
+            } else if(gameStates[gameStateId].ownershipGrid[y][x] == 2){
+                printString += " ▓"; 
+            } else {
+                printString += ` ${gameStates[gameStateId].colorGrid[y][x]}`; 
+            }
+        }
+
+        printString += "\t"
+        for(var x = 0; x < gridWidth; x++){
+            printString += ` ${gameStates[gameStateId].colorGrid[y][x]}`; 
+        }
+
+        printString += "\t"
+        for(var x = 0; x < gridWidth; x++){
+            if(gameStates[gameStateId].ownershipGrid[y][x] == 1){
+                printString += " ○"; 
+            } else if(gameStates[gameStateId].ownershipGrid[y][x] == 2){
+                printString += " ●"; 
+            } else {
+                printString += ` ▒`; 
+            }
+        }
+    } 
+    
+    printString += `\n\tPlayer1: On color ${gameStates[gameStateId].player1.currentColor} `;
+    printString += `with score ${gameStates[gameStateId].player1.claimedTiles}.`;
+    
+    printString += `\n\tPlayer2: On color ${gameStates[gameStateId].player2.currentColor} `;
+    printString += `with score ${gameStates[gameStateId].player2.claimedTiles}.`;
+
+    printString += `\n\tIt is Player${gameStates[gameStateId].turn % 2 + 1}'s turn.`;
+
+    console.info(printString);
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                  Computer Turn Logic
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function takeComputerTurn(){
-    var result = oneTurnLookAhead();
-    switchColor(0, result);
+    printGameState(0);
+    var scores = getClosenessScores(0);
+
+    currentComputerTurnOptions = [];
+    console.log('has look ahead', computerLookAhead);
+    var result = lookAhead(0, 1, computerLookAhead);
+
+    console.log(result);
+    currentComputerTurnOptions.sort((a,b) => {
+        var aScore = getAdjustedClosenessScore(a.p2Closeness);
+        var bScore = getAdjustedClosenessScore(b.p2Closeness);
+        return bScore + b.p2Claimed - aScore - a.p2Claimed;
+    });
+    console.log(currentComputerTurnOptions);
+    var chosenMove = currentComputerTurnOptions[0];
+
+    switchColor(0, chosenMove.startingColor);
+    printGameState(0);
 }
 
-function oneTurnLookAhead(){
+function lookAhead(gameStateId, depth, maxDepth, startingColor=null, recursion=true){
     var options = [];
     var backupOptions = [];
 
-    for(var co = 0; co < colorSet; co++){
-        var thisCopy = copyGameState(0);
-        var result = switchColor(thisCopy, co)
-        
-        if(result == "win" && gameStates[thisCopy].player2.claimedTiles >= gameStates[thisCopy].player1.claimedTiles){ 
-            return co;
-        } else if (result == "success"){
-            options.push({
-                color: co,
-                score: gameStates[thisCopy].player2.claimedTiles
-            });
-        } else if (result != "bad"){
-            backupOptions.push({
-                color: co,
-                score: gameStates[thisCopy].player2.claimedTiles
-            });
+    for(var color = 0; color < colorSet; color++){
+        var newGameStateId = copyGameState(gameStateId);
+        var result = switchColor(newGameStateId, color);
+        var closenesses = getClosenessScores(newGameStateId);
+
+        if(result != "bad"){
+            printGameState(newGameStateId);
+            console.log(`${newGameStateId}: was copied from ${gameStateId}`);
         }
-    }
 
-    // sort by which nets the highest score
-    options.sort((a, b) => b.score - a.score);
+        var sc = startingColor;
+        if(startingColor == null){
+            sc = color;
+        }
 
-    // if the only move is a losing move, make the best losing move
-    if(options.length == 0){
-        console.log("No viable options, forced to play a losing move").
-        backupOptions.sort((a, b) => b.score - a.score);
-        return backupOptions[0].color;
-    }
-
-    // detect endgame
-    if(options.filter(item => item.score == options[0].score).length == options.length){
-        console.log("all options equally viable, will attempt to find something landlocked.")
-        
-        var closenesses = getClosenessGrids(0);
-        for(var y = 0; y < gridHeight; y++){
-            for(var x = 0; x < gridWidth; x++){
-                if(gameStates[0].ownershipGrid[y][x] == null && closenesses.player1[y][x] == null && closenesses.player2[y][x] != null){
-                    if(options.find(item => item.color == gameStates[0].colorGrid[y][x])){
-                        console.log("Switching to a landlocked color option.")
-                        return gameStates[0].colorGrid[y][x];
-                    }
-                }
+        var newOption = {
+                "gameStateId": newGameStateId,
+                "color": color, 
+                "p1Claimed": gameStates[newGameStateId].player1.claimedTiles,
+                "p2Claimed": gameStates[newGameStateId].player2.claimedTiles,
+                "p1Closeness": closenesses.player1,
+                "p2Closeness": closenesses.player2,
+                "startingColor": sc
             }
+
+        var currentPlayer = (gameStates[gameStateId].turn) % 2 + 1;
+        
+        if(result != "bad"){
+            console.log(`${newGameStateId}: child of ${gameStateId} at depth ${depth}; player${currentPlayer} switching to ${color} yields ${result} ~ ${newOption.p1Claimed}/${newOption.p1Closeness} to ${newOption.p2Claimed}/${newOption.p2Closeness}`);
+        } else {
+            console.log(`${newGameStateId}: child of ${gameStateId} at depth ${depth}; player${currentPlayer} switching to ${color} yields ${result}`);
+        }
+        
+        if(result == "win"){
+            // winning move
+            console.log(`${newGameStateId}: winning move`)
+
+            if(currentPlayer == gameStates[newGameStateId].winner){ // this player is the winner
+                console.log(`${newGameStateId}: player${currentPlayer} is the winner`);
+                options = [newOption];
+                if(currentPlayer == 2){
+                    currentComputerTurnOptions = [newOption];
+                }
+            } else if (gameStates[newGameStateId].winner == 0){ // this is a draw state 
+                console.log(`${newGameStateId}: player${currentPlayer} encountered a draw state`);
+                options.push(newOption);
+                currentComputerTurnOptions.push(newOption);
+            } else { // this player is the loser
+                console.log(`${newGameStateId}: player${currentPlayer} is the loser`);
+                backupOptions.push()
+            }
+        } else if(result == "success"){
+            // legal, non-game-ending move 
+
+            if (!recursion || depth >= maxDepth) {
+                // stop iterating if depth reached or no recurision
+                console.log(`${newGameStateId}: reached depth ${depth}/${maxDepth}. Using recursion? ${recursion}. Adding option without children`);
+                options.push(newOption);
+
+                if(depth >= maxDepth){
+                    currentComputerTurnOptions.push(newOption);
+                }
+            } else if(currentPlayer == 2){
+                var childOptions = lookAhead(newGameStateId, depth + 1, maxDepth, sc, false);
+
+                console.log(`${newGameStateId}: depth ${depth}, has ${childOptions.length} children`);
+                console.log(childOptions);
+
+                childOptions.sort((a, b) => b.p1Claimed - a.p1Claimed);
+                var maxChildScore = childOptions[0].p1Claimed;
+                var highestChildOptions = childOptions.filter(child => child.p1Claimed == maxChildScore);
+
+                console.log(`${newGameStateId}: new option has max child score of ${maxChildScore}, and ${highestChildOptions.length} children have this score.`)
+
+                for(var hco = 0; hco < highestChildOptions.length; hco++){
+                    var hcoGameStateId = highestChildOptions[hco].gameStateId;
+                    
+                    printGameState(hcoGameStateId);
+                    console.log(`${hcoGameStateId}: (as ${newGameStateId}) adding player2's ${depth + 2}-depth moves in response to p1.`)
+                    
+                    var grandchildOptions = lookAhead(hcoGameStateId, depth + 2, maxDepth, sc, true);
+                    options.push(...grandchildOptions);
+
+                    printGameState(hcoGameStateId);
+                    console.log(`${hcoGameStateId}: (as ${newGameStateId}) added ${grandchildOptions.length} grandchild options.`)
+                }
+            } 
         }
     }
 
-    console.log(options);
-    console.log("Switching to highest-scoring color option.")
-    return options[0].color;
+    if(options.length){
+        console.log(`${newGameStateId}: Completed and found ${options.length} options.`)
+        return options;
+    }
+
+    console.log(`${newGameStateId}: Completed and found no options. Will return with backup option only.`)
+    backupOptions.sort((a, b) => b.p2Claimed - a.p2Claimed);
+    currentComputerTurnOptions.push(backupOptions[0]);
+    return backupOptions;
 }
