@@ -17,6 +17,8 @@ var computerLookAhead = 1;
 var maxCloseness = 0;
 var currentComputerTurnOptions = [];
 
+var overrideOn = false;
+
 var colorBank = [
     "#ff389f",
     "#6b36ff",
@@ -292,11 +294,18 @@ function startGame(){
 
     maxCloseness = getClosenessScores(0).player1;
 
-    // OVERRIDE TODO REMOVE
-    // takeComputerTurn();
+    if(overrideOn){
+        takeComputerTurn();
+    }
 }
 
 function populateStartingGrids() {
+    if(overrideOn){
+        gridHeight = 4;
+        gridWidth = 4;
+        colorSet = 4;
+    }
+
     var colorGrid = [];
     var ownershipGrid = [];
     for(var y = 0; y < gridHeight; y++){
@@ -384,37 +393,39 @@ function populateStartingGrids() {
         }
     }
 
-    addNewGameState(colorGrid, ownershipGrid, 0, [], p1Links, p2Links, "Initialize game");
-    captureNewLink(0, 1, p1Start.y, p1Start.x);
-    captureNewLink(0, 2, p2Start.y, p2Start.x);
+    if(!overrideOn){ // Default game state
+        addNewGameState(colorGrid, ownershipGrid, 0, [], p1Links, p2Links, "Initialize game");
+        captureNewLink(0, 1, p1Start.y, p1Start.x);
+        captureNewLink(0, 2, p2Start.y, p2Start.x);
 
-    // // OVERRIDE 
-    // var overrideColorGrid = [
-    //     [3, 2, 0, 0],
-    //     [1, 3, 0, 3],
-    //     [2, 2, 1, 2],
-    //     [2, 0, 3, 0]
-    // ];
+    } else if(overrideOn){ // overridden game state
+        var overrideColorGrid = [
+            [3, 2, 0, 0],
+            [1, 3, 0, 3],
+            [2, 2, 1, 2],
+            [2, 0, 3, 0]
+        ];
 
-    // var overrideOwnershipGrid = [
-    //     [null, null, 2, 2],
-    //     [null, null, 2, null],
-    //     [1, 1, null, null],
-    //     [1, null, null, null]
-    // ]
+        var overrideOwnershipGrid = [
+            [null, null, 2, 2],
+            [null, null, 2, null],
+            [1, 1, null, null],
+            [1, null, null, null]
+        ];
 
-    // addNewGameState(overrideColorGrid, overrideOwnershipGrid, 5, [], p1Links, p2Links, "Initialize game");
-    // gameStates[0].player1.currentColor = 2;
-    // gameStates[0].player2.currentColor = 0;
+        addNewGameState(overrideColorGrid, overrideOwnershipGrid, 5, [], p1Links, p2Links, "Initialize game");
+        gameStates[0].player1.currentColor = 2;
+        gameStates[0].player2.currentColor = 0;
 
-    // captureNewLink(0, 1, p1Start.y - 1, p1Start.x);
-    // captureNewLink(0, 1, p1Start.y - 1, p1Start.x + 1);
-    // captureNewLink(0, 1, p1Start.y, p1Start.x);
-    // captureNewLink(0, 2, p2Start.y, p2Start.x);
-    // captureNewLink(0, 2, p2Start.y, p2Start.x - 1);
-    // captureNewLink(0, 2, p2Start.y + 1, p2Start.x - 1);
+        captureNewLink(0, 1, p1Start.y - 1, p1Start.x);
+        captureNewLink(0, 1, p1Start.y - 1, p1Start.x + 1);
+        captureNewLink(0, 1, p1Start.y, p1Start.x);
+        captureNewLink(0, 2, p2Start.y, p2Start.x);
+        captureNewLink(0, 2, p2Start.y, p2Start.x - 1);
+        captureNewLink(0, 2, p2Start.y + 1, p2Start.x - 1);
+    }
     
-    // printGameState(0);
+    printGameState(0);
 }
 
 function createBasicLayout(){
@@ -469,7 +480,7 @@ function drawGrid(){
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function switchColor(gameStateId, color){
-    console.log(`${gameStateId}: switching to ${color}`)
+    //console.log(`${gameStateId}: switching to ${color}`)
 
     if(color == gameStates[gameStateId].player1.currentColor || color == gameStates[gameStateId].player2.currentColor){
         return "bad";
@@ -568,8 +579,9 @@ function switchColor(gameStateId, color){
         
         if(updateUI) {
             endGame(gameStates[gameStateId].winner);
-            return "win";
         }
+
+        return "win";
     }
 
     if(updateUI & gameStates[gameStateId].turn%2 && !player2.isHuman){
@@ -582,7 +594,7 @@ function switchColor(gameStateId, color){
 function claimLandlockedTiles(gameStateId, player){
     var captured = 0;
     var closenesses = getClosenessGrids(gameStateId);
-    console.log(closenesses);
+    //console.log(closenesses);
 
     for(var y = 0; y < gridHeight; y++){
         for(var x = 0; x < gridWidth; x++){
@@ -606,15 +618,18 @@ function claimLandlockedTiles(gameStateId, player){
 }
 
 function isGameOver(gameStateId){
+    var captured = gameStates[gameStateId].player1.claimedTiles + gameStates[gameStateId].player2.claimedTiles;
+    var total = gridHeight * gridWidth;
+
     if(gameStateId == 0 && captureAllTiles){
-        var captured = gameStates[gameStateId].player1.claimedTiles + gameStates[gameStateId].player2.claimedTiles;
-        var total = gridHeight * gridWidth;
+        console.log(`${gameStateId}: Checking endgame for all-tile game: ${captured}/${total} captured`);
         return ( captured == total );
     } 
 
     // otherwise use first-past-the-post
     var thePost = gridHeight * gridWidth / 2;
-    return (gameStates[gameStateId].player1.claimedTiles > thePost) || (gameStates[gameStateId].player2.claimedTiles > thePost);
+    console.log(`${gameStateId}: Checking endgame for all-tile game: need greater than ${thePost} to win OR all captured to draw (${captured}/${total})`);
+    return (gameStates[gameStateId].player1.claimedTiles >= thePost) || (gameStates[gameStateId].player2.claimedTiles >= thePost);
 }
 
 function endGame(winner){
@@ -742,6 +757,32 @@ function getClosenessScores(gameStateId){
 
 function getAdjustedClosenessScore(score){
     return (maxCloseness - score)/maxCloseness;
+}
+
+function doesPlayerTwoHaveOnlyLandlockedTiles(gameStateId){
+    var result = {
+        "onlyLandlockedRemain": true,
+        "landlocked": []
+    };
+
+    var closenesses = getClosenessGrids(gameStateId);
+
+    for(var y = 0; y < gridHeight; y++){
+        for(var x = 0; x < gridWidth; x++){
+            if(closenesses.player1[y][x] == null && gameStates[gameStateId].ownershipGrid[y][x] == null){
+                console.log(`p2 has landlocked at ${y},${x}`)
+                // check if the tile is landlocked by p1
+                result.landlocked.push(gameStates[gameStateId].colorGrid[y][x])
+            } else if(closenesses.player2[y][x] != null && gameStates[gameStateId].ownershipGrid[y][x] == null){
+                // check if the tile is NOT  landlocked by p2. 
+                console.log(`a non-landlocked tile exists at ${y},${x}`)
+                result.onlyLandlockedRemain = false;
+            }
+        }
+    }
+
+    console.log(`${gameStateId}: Found ${result.landlocked.length} landlocked tiles`)
+    return result;
 }
 
 function getClosenessGrids(gameStateId){
@@ -934,6 +975,8 @@ function countRemainingColors(gameStateId){
 }
 
 function printGameState(gameStateId){
+    return; // comment out this line to turn full gamestate logs back on
+
     var printString = `GAME STATE ${gameStateId}`;
 
     for(var y = 0; y < gridHeight; y++){
@@ -984,6 +1027,14 @@ function takeComputerTurn(){
     printGameState(0);
     var scores = getClosenessScores(0);
 
+    var landlockedOnly = doesPlayerTwoHaveOnlyLandlockedTiles(0);
+    console.log(`Checking switch to landlocked. Autocapture: ${autoCapture}; Only Landlocked Remain: ${landlockedOnly.onlyLandlockedRemain}; P2 Landlocked: ${landlockedOnly.landlocked.length}`);
+    if(!autoCapture && landlockedOnly.onlyLandlockedRemain && landlockedOnly.landlocked.length > 0){
+        switchColor(0, landlockedOnly.landlocked[0]);
+        printGameState(0);
+        return;
+    }
+
     currentComputerTurnOptions = [];
     console.log('has look ahead', computerLookAhead);
     var result = lookAhead(0, 1, computerLookAhead);
@@ -1012,7 +1063,7 @@ function lookAhead(gameStateId, depth, maxDepth, startingColor=null, recursion=t
 
         if(result != "bad"){
             printGameState(newGameStateId);
-            console.log(`${newGameStateId}: was copied from ${gameStateId}`);
+            //console.log(`${newGameStateId}: was copied from ${gameStateId}`);
         }
 
         var sc = startingColor;
@@ -1033,35 +1084,17 @@ function lookAhead(gameStateId, depth, maxDepth, startingColor=null, recursion=t
         var currentPlayer = (gameStates[gameStateId].turn) % 2 + 1;
         
         if(result != "bad"){
-            console.log(`${newGameStateId}: child of ${gameStateId} at depth ${depth}; player${currentPlayer} switching to ${color} yields ${result} ~ ${newOption.p1Claimed}/${newOption.p1Closeness} to ${newOption.p2Claimed}/${newOption.p2Closeness}`);
+            //console.log(`${newGameStateId}: child of ${gameStateId} at depth ${depth}; player${currentPlayer} switching to ${color} yields ${result} ~ ${newOption.p1Claimed}/${newOption.p1Closeness} to ${newOption.p2Claimed}/${newOption.p2Closeness}`);
         } else {
-            console.log(`${newGameStateId}: child of ${gameStateId} at depth ${depth}; player${currentPlayer} switching to ${color} yields ${result}`);
+            //console.log(`${newGameStateId}: child of ${gameStateId} at depth ${depth}; player${currentPlayer} switching to ${color} yields ${result}`);
         }
-        
-        if(result == "win"){
-            // winning move
-            console.log(`${newGameStateId}: winning move`)
 
-            if(currentPlayer == gameStates[newGameStateId].winner){ // this player is the winner
-                console.log(`${newGameStateId}: player${currentPlayer} is the winner`);
-                options = [newOption];
-                if(currentPlayer == 2){
-                    currentComputerTurnOptions = [newOption];
-                }
-            } else if (gameStates[newGameStateId].winner == 0){ // this is a draw state 
-                console.log(`${newGameStateId}: player${currentPlayer} encountered a draw state`);
-                options.push(newOption);
-                currentComputerTurnOptions.push(newOption);
-            } else { // this player is the loser
-                console.log(`${newGameStateId}: player${currentPlayer} is the loser`);
-                backupOptions.push()
-            }
-        } else if(result == "success"){
-            // legal, non-game-ending move 
+        if(result != "bad"){
+            // legal move 
 
             if (!recursion || depth >= maxDepth) {
                 // stop iterating if depth reached or no recurision
-                console.log(`${newGameStateId}: reached depth ${depth}/${maxDepth}. Using recursion? ${recursion}. Adding option without children`);
+                //console.log(`${newGameStateId}: reached depth ${depth}/${maxDepth}. Using recursion? ${recursion}. Adding option without children`);
                 options.push(newOption);
 
                 if(depth >= maxDepth){
@@ -1070,37 +1103,38 @@ function lookAhead(gameStateId, depth, maxDepth, startingColor=null, recursion=t
             } else if(currentPlayer == 2){
                 var childOptions = lookAhead(newGameStateId, depth + 1, maxDepth, sc, false);
 
-                console.log(`${newGameStateId}: depth ${depth}, has ${childOptions.length} children`);
-                console.log(childOptions);
+                //console.log(`${newGameStateId}: depth ${depth}, has ${childOptions.length} children`);
+                //console.log(childOptions);
 
                 childOptions.sort((a, b) => b.p1Claimed - a.p1Claimed);
                 var maxChildScore = childOptions[0].p1Claimed;
                 var highestChildOptions = childOptions.filter(child => child.p1Claimed == maxChildScore);
 
-                console.log(`${newGameStateId}: new option has max child score of ${maxChildScore}, and ${highestChildOptions.length} children have this score.`)
+                //console.log(`${newGameStateId}: new option has max child score of ${maxChildScore}, and ${highestChildOptions.length} children have this score.`)
 
                 for(var hco = 0; hco < highestChildOptions.length; hco++){
                     var hcoGameStateId = highestChildOptions[hco].gameStateId;
                     
                     printGameState(hcoGameStateId);
-                    console.log(`${hcoGameStateId}: (as ${newGameStateId}) adding player2's ${depth + 2}-depth moves in response to p1.`)
+                    //console.log(`${hcoGameStateId}: (as ${newGameStateId}) adding player2's ${depth + 2}-depth moves in response to p1.`)
                     
                     var grandchildOptions = lookAhead(hcoGameStateId, depth + 2, maxDepth, sc, true);
                     options.push(...grandchildOptions);
 
                     printGameState(hcoGameStateId);
-                    console.log(`${hcoGameStateId}: (as ${newGameStateId}) added ${grandchildOptions.length} grandchild options.`)
+                    //console.log(`${hcoGameStateId}: (as ${newGameStateId}) added ${grandchildOptions.length} grandchild options.`)
                 }
             } 
         }
     }
 
     if(options.length){
-        console.log(`${newGameStateId}: Completed and found ${options.length} options.`)
+        //console.log(`${newGameStateId}: Completed and found ${options.length} options.`)
         return options;
     }
 
-    console.log(`${newGameStateId}: Completed and found no options. Will return with backup option only.`)
+    //console.log(`${newGameStateId}: Completed and found no options. Will return with backup option only.`)
+    //console.log(backupOptions)
     backupOptions.sort((a, b) => b.p2Claimed - a.p2Claimed);
     currentComputerTurnOptions.push(backupOptions[0]);
     return backupOptions;
