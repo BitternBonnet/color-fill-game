@@ -7,6 +7,10 @@ var gridWidth = 8;
 var gridHeight = 7;
 var colorSet = 6;
 
+var maxGridWidth = 10;
+var maxGridHeight = 10;
+var maxColors = 8;
+
 var gameStates = [];
 
 var captureAllTiles = true;
@@ -20,16 +24,14 @@ var currentComputerTurnOptions = [];
 var overrideOn = false;
 
 var colorBank = [
-    "#ff389f",
-    "#6b36ff",
-    "#7bff5a",
-    "#3d3d3d",
-    "#f2ff3e",
-    "#ab00cd",
-    "#44c1ff",
-    "#ffa113",
-    "#ff1c1c",
-    "#f4f4f4",
+    "#de7c81",
+    "#78a3df",
+    "#9dda8e",
+    "#dcdc7f",
+    "#b9b0ab",
+    "#856382",
+    "#5c5748",
+    "#d8b17e",
 ]
 
 var player1 = {
@@ -125,24 +127,24 @@ function displayConfigurationScreen(){
     </div>`;
     document.getElementById("main-content").innerHTML = configurationHTML;
 
-    for(let s = 3; s < 16; s++){
+    for(let s = 3; s <= maxGridHeight; s++){
         document.getElementById(`board-height-selector`).innerHTML += `<div class="number-selector-option" id="board-height-selector-${s}">${s}</div>`;
     }
-    for(let s = 3; s < 16; s++){
+    for(let s = 3; s <= maxGridHeight; s++){
         document.getElementById(`board-height-selector-${s}`).addEventListener("click", e => handleNumberSelectorInput("height", s));
     }
 
-    for(let s = 3; s < 16; s++){
+    for(let s = 3; s <= maxGridWidth; s++){
         document.getElementById(`board-width-selector`).innerHTML += `<div class="number-selector-option" id="board-width-selector-${s}">${s}</div>`;
     }
-    for(let s = 3; s < 16; s++){
+    for(let s = 3; s <= maxGridWidth; s++){
         document.getElementById(`board-width-selector-${s}`).addEventListener("click", e => handleNumberSelectorInput("width", s));
     }
 
-    for(let s = 3; s <= 10; s++){
+    for(let s = 3; s <= maxColors; s++){
         document.getElementById(`color-count-selector`).innerHTML += `<div class="number-selector-option" id="color-count-selector-${s}">${s}</div>`;
     }
-    for(let s = 3; s <= 10; s++){
+    for(let s = 3; s <= maxColors; s++){
         document.getElementById(`color-count-selector-${s}`).addEventListener("click", e => handleNumberSelectorInput("color", s));
     }
     
@@ -430,13 +432,13 @@ function populateStartingGrids() {
 
 function createBasicLayout(){
     var basicLayoutHTML = `<div id="game-state-container">
-        <div class="player" id="player-1" style="outline-color: ${colorBank[gameStates[0].player1.currentColor]}">
+        <div class="player" id="player-1" style="border-color: ${colorBank[gameStates[0].player1.currentColor]}">
             <h2>${player1.name}</h2>
             <p id="player-1-score">${gameStates[0].player1.claimedTiles}${captureGoal}</p>
             <p style="visibility: hidden; font-weight: bold;" id="player-1-turn-indicator">Your turn!</p>
         </div>
         <div id="game-grid"></div>
-        <div class="player" id="player-2" style="outline-color: ${colorBank[gameStates[0].player2.currentColor]}"2>
+        <div class="player" id="player-2" style="border-color: ${colorBank[gameStates[0].player2.currentColor]}"2>
             <h2>${player2.name}</h2>
             <p id="player-2-score">${gameStates[0].player2.claimedTiles}${captureGoal}</p>
             <p style="visibility: hidden; font-weight: bold;" id="player-2-turn-indicator">Your turn!</p>
